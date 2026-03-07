@@ -1,0 +1,31 @@
+## Interface: 11200
+## Title: TWoW Bulk Mail
+## Notes: Bulk mail sending for Turtle WoW (1.12)
+## Author: Khundiann
+## Version: 1.0.0
+## SavedVariables: TWoWBulkMailDB, TWoWBulkMailItemCache
+
+Compat.lua
+Libs\AceLibrary\AceLibrary.lua
+Libs\AceOO-2.0\AceOO-2.0.lua
+Libs\AceEvent-2.0\AceEvent-2.0.lua
+Libs\AceAddon-2.0\AceAddon-2.0.lua
+Libs\AceHook-2.1\AceHook-2.1.lua
+Libs\AceDB-2.0\AceDB-2.0.lua
+Libs\AceConsole-2.0\AceConsole-2.0.lua
+Libs\AceLocale-2.2\AceLocale-2.2.lua
+Libs\Compost-2.0\Compost-2.0.lua
+Libs\Tablet-2.0\Tablet-2.0.lua
+Libs\Dewdrop-2.0\Dewdrop-2.0.lua
+Libs\Abacus-2.0\Abacus-2.0.lua
+Libs\Gratuity-2.0\Gratuity-2.0.lua
+Libs\PeriodicTable-2.0\PeriodicTable-Core-2.0\PeriodicTable-Core-2.0.lua
+Libs\PeriodicTable-2.0\PeriodicTable-Misc-2.0\PeriodicTable-Misc-2.0.lua
+Libs\PeriodicTable-2.0\PeriodicTable-2.0\PeriodicTable-2.0.lua
+TWoWBulkMail.lua
+PTCompat.lua
+Rules.lua
+SendQueue.lua
+SendCore.lua
+UI_SendQueue.lua
+UI_Rules.lua
