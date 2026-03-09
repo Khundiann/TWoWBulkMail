@@ -34,15 +34,21 @@ local function onSendQueueItemSelect(bag, slot)
 end
 
 local function onDropClick()
-	if mod:GetSendMailItem() then
-		mod:Print(
-			mod.L["WARNING: Cursor item detection is NOT well-defined when multiple items are 'locked'. Alt-click is recommended for adding items when there is already an item in the Send Mail item frame."]
-		)
-	end
+	if CursorHasItem() then
+		local cursorItem = mod.state.cursorItem
+		if not (cursorItem and cursorItem[1] and cursorItem[2]) then
+			mod:Print("Drop failed: could not identify the cursor item. Pick it up again, then click the drop area.")
+			return
+		end
 
-	if CursorHasItem() and mod:GetLockedContainerItem() then
-		mod:SendCacheAdd(mod:GetLockedContainerItem())
-		PickupContainerItem(mod:GetLockedContainerItem())
+		local bag, slot = cursorItem[1], cursorItem[2]
+		ClearCursor()
+		mod.state.cursorItem = nil
+
+		mod:ScheduleEvent(function()
+			mod:SendCacheAdd(bag, slot)
+			mod:RefreshSendQueueGUI()
+		end, 0)
 	end
 
 	mod:RefreshSendQueueGUI()
@@ -149,25 +155,25 @@ function mod:RegisterSendQueueGUI()
 
 			local cat = tablet:AddCategory("columns", 1)
 			if pipeline and pipeline.sending then
+				cat:AddLine("text", mod.L["Send"], "textR", 0.5, "textG", 0.5, "textB", 0.5)
 				cat:AddLine("text", pipeline.paused and "Resume" or "Pause", "func", onPauseResumeClick)
 				cat:AddLine("text", "Stop", "func", onStopClick)
-				cat:AddLine("text", mod.L["Send"], "textR", 0.5, "textG", 0.5, "textB", 0.5)
-				cat:AddLine("text", mod.L["Clear"], "func", mod.SendCacheCleanup, "arg1", mod)
-				cat:AddLine("text", mod.L["AutoSend Rules"], "func", onAutoSendRulesClick)
-				cat:AddLine()
-			elseif hasQueue then
-				if canSend then
-					cat:AddLine("text", mod.L["Send"], "func", onSendClick)
-				else
-					cat:AddLine("text", mod.L["Send"], "textR", 0.5, "textG", 0.5, "textB", 0.5)
-				end
-				cat:AddLine("text", mod.L["Clear"], "func", mod.SendCacheCleanup, "arg1", mod)
-				cat:AddLine("text", mod.L["AutoSend Rules"], "func", onAutoSendRulesClick)
-				cat:AddLine()
+			elseif hasQueue and canSend then
+				cat:AddLine("text", mod.L["Send"], "func", onSendClick)
+				cat:AddLine("text", "Pause", "textR", 0.5, "textG", 0.5, "textB", 0.5)
+				cat:AddLine("text", "Stop", "textR", 0.5, "textG", 0.5, "textB", 0.5)
 			else
-				cat:AddLine("text", mod.L["AutoSend Rules"], "func", onAutoSendRulesClick)
-				cat:AddLine()
+				cat:AddLine("text", mod.L["Send"], "textR", 0.5, "textG", 0.5, "textB", 0.5)
+				cat:AddLine("text", "Pause", "textR", 0.5, "textG", 0.5, "textB", 0.5)
+				cat:AddLine("text", "Stop", "textR", 0.5, "textG", 0.5, "textB", 0.5)
 			end
+			if hasQueue or (pipeline and pipeline.sending) then
+				cat:AddLine("text", mod.L["Clear"], "func", mod.SendCacheCleanup, "arg1", mod)
+			else
+				cat:AddLine("text", mod.L["Clear"], "textR", 0.5, "textG", 0.5, "textB", 0.5)
+			end
+			cat:AddLine("text", mod.L["AutoSend Rules"], "func", onAutoSendRulesClick)
+			cat:AddLine()
 
 			cat:AddLine("text", statusText)
 			if (pipeline and pipeline.sending) or (status.currentDest or status.currentItem) then
@@ -200,13 +206,11 @@ function mod:RegisterSendQueueGUI()
 
 				local summary =
 					fmt("Last run: sent %d, failed %d, skipped %d, pending %d", sent, failed, skipped, pending)
-				local rc = tablet:AddCategory("columns", 2, "text", "Last run", "showWithoutChildren", true)
-				rc:AddLine(
-					"text",
-					summary,
-					"text2",
-					lastRun.stopReason and ("Stopped: " .. tostring(lastRun.stopReason)) or ""
-				)
+				local rc = tablet:AddCategory("columns", 1, "text", "Last run", "showWithoutChildren", true)
+				rc:AddLine("text", summary)
+				if lastRun.stopReason then
+					rc:AddLine("text", "Stopped: " .. tostring(lastRun.stopReason))
+				end
 				rc:AddLine(
 					"text",
 					ui.showLastRunDetails and "Hide details" or "Show details",
@@ -215,12 +219,13 @@ function mod:RegisterSendQueueGUI()
 				)
 
 				if ui.showLastRunDetails then
+					local rcd = tablet:AddCategory("columns", 2, "showWithoutChildren", true, "child_indentation", 5)
 					for _, id in ipairs(lastRun.order) do
 						local j = lastRun.jobs[id]
 						if j then
 							local statusLabel = tostring(j.status or "unknown")
 							if j.status == "sent" then
-								rc:AddLine(
+								rcd:AddLine(
 									"text",
 									formatJobText(j),
 									"text2",
@@ -233,33 +238,55 @@ function mod:RegisterSendQueueGUI()
 									0.2
 								)
 							elseif j.status == "failed" then
-								rc:AddLine(
+								rcd:AddLine(
 									"text",
 									formatJobText(j),
 									"text2",
-									j.error and (statusLabel .. ": " .. tostring(j.error)) or statusLabel,
+									statusLabel,
 									"text2R",
 									1,
 									"text2G",
 									0.2,
 									"text2B",
-									0.2
+									0.2,
+									"func",
+									function()
+										mod:Print(
+											fmt(
+												"Last run: %s -> %s%s",
+												formatJobText(j),
+												statusLabel,
+												j.error and (": " .. tostring(j.error)) or ""
+											)
+										)
+									end
 								)
 							elseif j.status == "skipped" then
-								rc:AddLine(
+								rcd:AddLine(
 									"text",
 									formatJobText(j),
 									"text2",
-									j.error and (statusLabel .. ": " .. tostring(j.error)) or statusLabel,
+									statusLabel,
 									"text2R",
 									1,
 									"text2G",
 									0.8,
 									"text2B",
-									0.2
+									0.2,
+									"func",
+									function()
+										mod:Print(
+											fmt(
+												"Last run: %s -> %s%s",
+												formatJobText(j),
+												statusLabel,
+												j.error and (": " .. tostring(j.error)) or ""
+											)
+										)
+									end
 								)
 							else
-								rc:AddLine(
+								rcd:AddLine(
 									"text",
 									formatJobText(j),
 									"text2",
@@ -347,21 +374,14 @@ function mod:ShowSendQueueGUI()
 	if not tablet:IsRegistered("TWoWBulkMail_SendQueueTablet") then
 		self:RegisterSendQueueGUI()
 	end
-	tablet:Open("TWoWBulkMail_SendQueueTablet")
+	if self:IsTabletOpen("TWoWBulkMail_SendQueueTablet") then
+		return tablet:Refresh("TWoWBulkMail_SendQueueTablet")
+	end
+	return tablet:Open("TWoWBulkMail_SendQueueTablet")
 end
 
 function mod:HideSendQueueGUI()
-	if tablet:IsRegistered("TWoWBulkMail_SendQueueTablet") then
-		local info = tablet.registry and tablet.registry["TWoWBulkMail_SendQueueTablet"]
-		if info and info.tooltip and info.detachedData and info.detachedData.detached then
-			info.tooltip:Hide()
-			info.tooltip.notInUse = true
-			info.tooltip.registration = nil
-			info.tooltip = nil
-		else
-			tablet:Close()
-		end
-	end
+	return self:SafeTabletClose("TWoWBulkMail_SendQueueTablet")
 end
 
 function mod:RefreshSendQueueGUI()
