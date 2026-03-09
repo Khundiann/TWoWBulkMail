@@ -17,6 +17,26 @@ if not select then
 	end
 end
 
+-- WoW 1.12 / Lua 5.0 compatibility: string.match was introduced later.
+if not string.match then
+	function string.match(text, pattern, init)
+		if text == nil or pattern == nil then
+			return nil
+		end
+
+		local startPos, endPos, cap1, cap2, cap3, cap4, cap5, cap6, cap7, cap8, cap9 = string.find(text, pattern, init)
+		if not startPos then
+			return nil
+		end
+
+		if cap1 ~= nil then
+			return cap1, cap2, cap3, cap4, cap5, cap6, cap7, cap8, cap9
+		end
+
+		return string.sub(text, startPos, endPos)
+	end
+end
+
 if not InCombatLockdown then
 	function InCombatLockdown()
 		return false

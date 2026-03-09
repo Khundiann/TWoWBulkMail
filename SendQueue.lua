@@ -197,6 +197,31 @@ function mod:ShadeContainerFrame(frame)
 	end
 end
 
+function mod:PickupContainerItem(bag, slot)
+	local hadCursor = CursorHasItem() and true or false
+	local texture = GetContainerItemInfo(bag, slot)
+	local hadItem = texture and true or false
+
+	local ret = nil
+	if self.hooks and self.hooks.PickupContainerItem then
+		ret = self.hooks.PickupContainerItem(bag, slot)
+	else
+		return
+	end
+
+	if not hadCursor and hadItem and CursorHasItem() then
+		self.state.cursorItem = { bag, slot }
+	elseif hadCursor and not CursorHasItem() then
+		self.state.cursorItem = nil
+	end
+
+	return ret
+end
+
+function mod:CURSOR_UPDATE()
+	self.state.cursorItem = nil
+end
+
 function mod:GetLockedContainerItem()
 	for bag = 0, NUM_BAG_SLOTS do
 		for slot = 1, GetContainerNumSlots(bag) do

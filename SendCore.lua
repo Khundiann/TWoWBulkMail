@@ -402,6 +402,7 @@ function mod:InitEvents()
 	self:RegisterEvent("MAIL_CLOSED")
 	self:RegisterEvent("MAIL_SEND_SUCCESS")
 	self:RegisterEvent("UI_ERROR_MESSAGE")
+	self:RegisterEvent("CURSOR_UPDATE")
 	self:RegisterEvent("PLAYER_ENTERING_WORLD")
 
 	if MailFrame and MailFrame:IsVisible() then
@@ -452,6 +453,9 @@ function mod:MAIL_SHOW()
 	if type(_G.StaticPopup_Show) == "function" then
 		self:Hook("StaticPopup_Show")
 	end
+	if type(_G.PickupContainerItem) == "function" then
+		self:Hook("PickupContainerItem")
+	end
 
 	SendMailMailButton:Enable()
 end
@@ -461,6 +465,7 @@ function mod:MAIL_CLOSED()
 	self:UnhookAll()
 	self:SendCacheCleanup()
 	self:HideSendQueueGUI()
+	self:SafeTabletClose("TWoWBulkMail_AutoSendEditTablet")
 	self:CancelScheduledEvent("TWoWBulkMail_SendNext")
 	self.state.sendStatus = {
 		state = "idle",
